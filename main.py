@@ -37,6 +37,8 @@ class Gomoku:
         self.board_padx = 0
         self.board_pady = 0
 
+        self.is_game_running = False
+
     def set_screen_center(self):
         # initial window size
         window_width = 680
@@ -48,6 +50,9 @@ class Gomoku:
         self.master.geometry("680x680+{}+{}".format(position_right, position_down))
 
     def resize_window(self, event):
+        # when game is running, player cannot chang board size.
+        if self.is_game_running == True:
+            return
         x = self.master.winfo_width() / 5
         button_width = x * 0.8
         self.buttonSetup.place(x=(1.0 + 0.1) * x, y=10, width=button_width)
@@ -72,12 +77,21 @@ class Gomoku:
     def setup_game(self):
         root = tk.Toplevel(self.master)
         setup = Setup(root)
-        print("setup game")
+        setup.show()
+        #print(a, b)
+        self.game_size       = setup.game_size
+        self.algorithm       = setup.algorithm
+        self.strategy_switch = setup.strategy_scale
+        self.player_first    = setup.player_first
+        self.setup_board()
 
     def restart_game(self):
         print("restart game")
 
     def setup_board(self):
+        self.X = [0 for n in range(self.game_size)]
+        self.Y = [0 for n in range(self.game_size)]
+        self.board = [[0 for r in range(self.game_size)] for c in range(self.game_size)]
         grid_size = int(self.canvas.winfo_width() / (self.game_size + 1))
         padx = int((self.canvas.winfo_width() - (grid_size * (self.game_size + 1))) / 2)
         pady = int((self.canvas.winfo_height() - (grid_size * (self.game_size + 1))) / 2)
@@ -138,19 +152,36 @@ class Gomoku:
         ulc_row = int((mouse_y-self.board_pady-self.grid_size)/self.grid_size)
         ulc_col = int((mouse_x-self.board_padx-self.grid_size)/self.grid_size)
         # if the mouse is over the canvas
-        if type(caller) == type(self.canvas) and self.X[0]<=mouse_x<=self.X[-1] and self.Y[0]<=mouse_y<=self.Y[-1]:
-            self.statusBar.config(text="mouse_x=%d mouse_y=%d mouse_row=%d mouse_col=%d padx=%d pady=%d" % (
-                mouse_x, mouse_y, ulc_row, ulc_col, self.board_padx, self.board_pady))
+        if type(caller) == type(self.canvas):
             for r in [ulc_row, ulc_row+1]:
                 for c in [ulc_col, ulc_col+1]:
-                    x2 = self.X[c]
-                    y2 = self.Y[r]
-                    d = self.dist(mouse_x, mouse_y, x2, y2)
-                    if d <= self.grid_size/3 and self.board[r][c] == 0:
-                        self.statusBar.config(text="row=%2d, col=%2d, you can put a stone here." %(r, c))
+                    if 0<=r<self.game_size and 0<=c<self.game_size:
+                        x2 = self.X[c]
+                        y2 = self.Y[r]
+                        d = self.dist(mouse_x, mouse_y, x2, y2)
+                        if d <= self.grid_size/3 and self.board[r][c] == 0:
+                            self.statusBar.config(text="row=%2d, col=%2d, you can put a stone here." %(r, c))
 
     def mouse_click(self, event):
-        print(event.x, event.y)
+        caller = event.widget
+        mouse_x = event.x
+        mouse_y = event.y
+
+        # upper left corner of the grid where the mouse hover over.
+        ulc_row = int((mouse_y-self.board_pady-self.grid_size)/self.grid_size)
+        ulc_col = int((mouse_x-self.board_padx-self.grid_size)/self.grid_size)
+        # if the mouse is over the canvas
+        if type(caller) == type(self.canvas):
+            for r in [ulc_row, ulc_row+1]:
+                for c in [ulc_col, ulc_col+1]:
+                    if 0<=r<self.game_size and 0<=c<self.game_size:
+                        x2 = self.X[c]
+                        y2 = self.Y[r]
+                        d = self.dist(mouse_x, mouse_y, x2, y2)
+                        if d <= self.grid_size/3 and self.board[r][c] == 0:
+                            r = int(self.grid_size/3)
+                            self.canvas.create_oval(x2-r, y2-r, x2+r, y2+r, fill="black")
+
     def dist(self, x1, y1, x2, y2):
         d = ((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))**(1/2)
         return d
