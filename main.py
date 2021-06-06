@@ -1,12 +1,14 @@
 import tkinter as tk
+from Setup import Setup
 
 class Gomoku:
-    def __init__(self, master, game_size=19, algorithm="Greedy", switch=0, search_depth=1, player_first=True):
-        self.master = master
-        self.master.geometry("680x680")
-        master.title("Gomoku/五子棋")
-        self.buttonNewGame = tk.Button(self.master, text="New Game", command=self.new_game)
-        self.buttonSetup = tk.Button(self.master, text="Setup Game", command=self.setup_game)
+    def __init__(self, root, game_size=19, algorithm="Greedy", switch=0, search_depth=1, player_first=True):
+        self.master = root
+        self.set_screen_center()
+
+        self.master.title("Gomoku/五子棋")
+        self.buttonNewGame = tk.Button(self.master, text="New Game",     command=self.new_game)
+        self.buttonSetup   = tk.Button(self.master, text="Setup Game",   command=self.setup_game)
         self.buttonRestart = tk.Button(self.master, text="Restart Game", command=self.restart_game)
 
         # put a label at the bottom of the window as a status bar
@@ -14,12 +16,12 @@ class Gomoku:
         self.statusBar.pack(side=tk.BOTTOM, fill=tk.X)
 
         # canvas is the container of the game board
-        self.canvas = tk.Canvas(self.master)
+        self.canvas = tk.Canvas(self.master, cursor="hand2")
 
         # redefine "resize" event
         self.master.bind("<Configure>", self.resize_window)
         self.master.bind("<Motion>", self.mouse_move)
-
+        self.master.bind("<Button-1>", self.mouse_click)
         # game attributes, default values
         self.game_size = game_size
         self.algorithm = algorithm
@@ -32,6 +34,18 @@ class Gomoku:
         self.Y = [0 for n in range(self.game_size)]
         self.board = [[0 for r in range(self.game_size)] for c in range(self.game_size)]
         self.grid_size = 0
+        self.board_padx = 0
+        self.board_pady = 0
+
+    def set_screen_center(self):
+        # initial window size
+        window_width = 680
+        window_height = 680
+
+        position_right = int(self.master.winfo_screenwidth() / 2 - window_width / 2)
+        position_down = int(self.master.winfo_screenheight() / 2 - window_height / 2)
+
+        self.master.geometry("680x680+{}+{}".format(position_right, position_down))
 
     def resize_window(self, event):
         x = self.master.winfo_width() / 5
@@ -56,6 +70,8 @@ class Gomoku:
         print("new game")
 
     def setup_game(self):
+        root = tk.Toplevel(self.master)
+        setup = Setup(root)
         print("setup game")
 
     def restart_game(self):
@@ -92,27 +108,49 @@ class Gomoku:
                 self.canvas.create_line(x1, y1, x2, y2, width=2)
             else:
                 self.canvas.create_line(x1, y1, x2, y2, width=1)
+
+        # draw row/column labels
+        for r in range(self.game_size):
+            x1 = self.X[0] -15
+            x2 = self.X[-1]+15
+            y  = self.Y[r]-2
+            text = "%2d"%r
+            self.canvas.create_text(x1, y, text=text, fill="blue")
+            self.canvas.create_text(x2, y, text=text, fill="blue")
+        for c in range(self.game_size):
+            x = self.X[c]
+            y1 = self.Y[0] - 12
+            y2 = self.Y[-1] + 12
+            text = "%2d" %c
+            self.canvas.create_text(x, y1, text=text, fill="blue")
+            self.canvas.create_text(x, y2, text=text, fill="blue")
         # save grid size
         self.grid_size = grid_size
+        self.board_padx = padx
+        self.board_pady = pady
 
     def mouse_move(self, event):
-        x1 = event.x
-        y1 = event.y
-        self.statusBar.config(text="%d %d" %(x1, y1))
-        #print(self.canvas.configure().keys())
-        for r in range(self.game_size):
-            for c in range(self.game_size):
-                x2 = self.X[c]
-                y2 = self.Y[r]
-                d = self.dist(x1, y1, x2, y2)
-                if d <= self.grid_size/3 and self.board[r][c] == 0:
-                    self.canvas.config(cursor="hand2")
-                    self.statusBar.config(text="row=%2d, col=%2d, x=%d, y=%d" %(r, c, x2, y2))
-                else:
-                    self.canvas.config(cursor="hand")
-                    #self.statusBar.config(text="")
+        caller = event.widget
+        mouse_x = event.x
+        mouse_y = event.y
 
+        # upper left corner of the grid where the mouse hover over.
+        ulc_row = int((mouse_y-self.board_pady-self.grid_size)/self.grid_size)
+        ulc_col = int((mouse_x-self.board_padx-self.grid_size)/self.grid_size)
+        # if the mouse is over the canvas
+        if type(caller) == type(self.canvas) and self.X[0]<=mouse_x<=self.X[-1] and self.Y[0]<=mouse_y<=self.Y[-1]:
+            self.statusBar.config(text="mouse_x=%d mouse_y=%d mouse_row=%d mouse_col=%d padx=%d pady=%d" % (
+                mouse_x, mouse_y, ulc_row, ulc_col, self.board_padx, self.board_pady))
+            for r in [ulc_row, ulc_row+1]:
+                for c in [ulc_col, ulc_col+1]:
+                    x2 = self.X[c]
+                    y2 = self.Y[r]
+                    d = self.dist(mouse_x, mouse_y, x2, y2)
+                    if d <= self.grid_size/3 and self.board[r][c] == 0:
+                        self.statusBar.config(text="row=%2d, col=%2d, you can put a stone here." %(r, c))
 
+    def mouse_click(self, event):
+        print(event.x, event.y)
     def dist(self, x1, y1, x2, y2):
         d = ((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))**(1/2)
         return d
