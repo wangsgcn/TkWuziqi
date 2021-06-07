@@ -37,7 +37,7 @@ class Gomoku:
         self.board_padx = 0
         self.board_pady = 0
 
-        self.is_game_running = False
+        self.game_running = False
 
     def set_screen_center(self):
         # initial window size
@@ -51,7 +51,7 @@ class Gomoku:
 
     def resize_window(self, event):
         # when game is running, player cannot chang board size.
-        if self.is_game_running == True:
+        if self.game_running == True:
             return
         x = self.master.winfo_width() / 5
         button_width = x * 0.8
